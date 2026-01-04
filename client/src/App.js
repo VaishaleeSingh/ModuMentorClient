@@ -182,7 +182,10 @@ function App() {
       addMessage(data.message, 'bot');
     });
 
-    return () => newSocket.close();
+    return () => {
+      newSocket.close();
+      setSocket(null);
+    };
   }, []);
 
   const scrollToBottom = () => {
