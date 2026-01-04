@@ -40,6 +40,7 @@ function App() {
         
         if (!response.ok) {
           // If proxy fails, try direct backend URL (only in development)
+          const apiBase = process.env.REACT_APP_API_URL || '';
           if (response.status === 404 && !apiBase && window.location.hostname === 'localhost') {
             const directUrl = 'http://localhost:5000/api/config';
             const directResponse = await fetch(directUrl);
@@ -321,11 +322,12 @@ function App() {
     }
     setActiveTab('help');
     try {
-      const response = await fetch(getApiUrl('/api/help?user_id=web-user'), {
-        method: 'GET',
+      const response = await fetch(getApiUrl('/api/help'), {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        body: JSON.stringify({ user_id: 'web-user' })
       });
 
       const data = await response.json();
@@ -350,22 +352,23 @@ function App() {
     }
     setActiveTab('tools');
     try {
-      const response = await fetch(getApiUrl('/api/tools'), {
-        method: 'GET',
+      const response = await fetch(getApiUrl('/api/test-tools'), {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        body: JSON.stringify({ user_id: 'web-user' })
       });
 
       const data = await response.json();
       
-      if (data.success && data.tools) {
-        const toolList = data.tools.map(tool => `• **${tool.name}**: ${tool.description || 'Available'}`).join('\n');
-        addMessage(`🔧 **Available Tools:**\n\n${toolList}`, 'bot');
+      if (data.test_results) {
+        const toolResults = Object.entries(data.test_results)
+          .map(([tool, result]) => `${result.status === 'success' ? '✅' : '❌'} **${tool}**: ${result.response}`)
+          .join('\n');
+        addMessage(`🔧 **Tool Test Results:**\n\n${toolResults}`, 'bot');
       } else if (data.error) {
         addMessage(`❌ Error: ${data.error}`, 'system');
-      } else {
-        addMessage('❌ Failed to retrieve tools information', 'system');
       }
     } catch (error) {
       console.error('Error testing tools:', error);
@@ -382,7 +385,7 @@ function App() {
     }
     setActiveTab('analyze');
     try {
-      const response = await fetch(getApiUrl('/api/analyze'), {
+      const response = await fetch(getApiUrl('/api/analyze-conversation'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -392,12 +395,10 @@ function App() {
 
       const data = await response.json();
       
-      if (data.success && data.analysis) {
-        addMessage(data.analysis, 'bot');
+      if (data.response) {
+        addMessage(data.response, 'bot');
       } else if (data.error) {
         addMessage(`❌ Error: ${data.error}`, 'system');
-      } else {
-        addMessage('❌ Failed to analyze conversation', 'system');
       }
     } catch (error) {
       console.error('Error analyzing conversation:', error);
