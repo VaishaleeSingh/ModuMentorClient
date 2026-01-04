@@ -8,6 +8,12 @@ const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
+
+// CORS configuration - allow requests from client URLs (must be defined before Socket.IO and Express CORS)
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : ['http://localhost:3000', 'https://modumentor-client.netlify.app', 'https://modumentor.netlify.app'];
+
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
@@ -26,10 +32,6 @@ const io = socketIo(server, {
 // Middleware
 app.use(helmet());
 app.use(morgan('combined'));
-// CORS configuration - allow requests from client URLs
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-  : ['http://localhost:3000', 'https://modumentor-client.netlify.app', 'https://modumentor.netlify.app'];
 
 app.use(cors({
   origin: function (origin, callback) {
