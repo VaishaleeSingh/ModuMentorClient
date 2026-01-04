@@ -106,12 +106,25 @@ async function callAgenticServer(endpoint, data = {}) {
       });
       throw new Error(`Agentic server error (${error.response.status}): ${errorMessage}`);
     } else {
+      // Network errors (ENOTFOUND, ECONNREFUSED, etc.)
       console.error('Network error details:', {
         code: error.code,
         message: error.message,
-        config: error.config?.url
+        url: error.config?.url,
+        syscall: error.syscall,
+        hostname: error.hostname,
+        address: error.address
       });
-      throw new Error(`Network error: ${error.message}`);
+      
+      if (error.code === 'ENOTFOUND') {
+        throw new Error(`DNS resolution failed for agentic server: ${AGENTIC_SERVER_URL}. Please check the URL.`);
+      } else if (error.code === 'ECONNREFUSED') {
+        throw new Error(`Agentic server refused connection: ${AGENTIC_SERVER_URL}. Server may be down or not accessible.`);
+      } else if (error.code === 'ECONNABORTED') {
+        throw new Error(`Agentic server request timed out after ${AGENTIC_TIMEOUT}ms. Server may be slow or unreachable.`);
+      } else {
+        throw new Error(`Network error (${error.code}): ${error.message}`);
+      }
     }
   }
 }
@@ -119,12 +132,25 @@ async function callAgenticServer(endpoint, data = {}) {
 // Health check for agentic server
 async function checkAgenticHealth() {
   try {
+    console.log(`Checking agentic server health at: ${AGENTIC_SERVER_URL}/health`);
     const response = await axios.get(`${AGENTIC_SERVER_URL}/health`, {
-      timeout: 5000
+      timeout: 10000,
+      validateStatus: function (status) {
+        return status < 500; // Accept any status code less than 500
+      }
     });
+    console.log(`Agentic server health check response: ${response.status}`, response.data);
     return response.data;
   } catch (error) {
-    console.error('Agentic server health check failed:', error.message);
+    console.error('Agentic server health check failed:', {
+      message: error.message,
+      code: error.code,
+      url: `${AGENTIC_SERVER_URL}/health`,
+      response: error.response ? {
+        status: error.response.status,
+        data: error.response.data
+      } : null
+    });
     return null;
   }
 }
@@ -448,8 +474,13 @@ server.listen(PORT, HOST, () => {
   checkAgenticHealth().then(health => {
     if (health) {
       console.log('✅ Agentic server is healthy and connected');
+      console.log('   Health check response:', JSON.stringify(health, null, 2));
     } else {
-      console.log('⚠️ Agentic server is not reachable');
+      console.log('⚠️  Agentic server is not reachable');
+      console.log(`   Please verify: ${AGENTIC_SERVER_URL}/health is accessible`);
+      console.log('   Check Render environment variables: AGENTIC_SERVER_URL');
     }
+  }).catch(err => {
+    console.error('❌ Error checking agentic server health:', err.message);
   });
 }); 
