@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import './App.css';
+import ModuMentorIcon from './components/ModuMentorIcon';
 
 function App() {
   const [messages, setMessages] = useState([]);
@@ -10,8 +11,65 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [projectConfig, setProjectConfig] = useState({
+    projectName: 'ModuMentor',
+    projectLogoUrl: '/favicon.ico',
+    projectFaviconUrl: '/favicon.ico'
+  });
+  const [activeTab, setActiveTab] = useState(null);
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
+
+  // Fetch project configuration
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        // Use proxy if available, otherwise use direct backend URL
+        const apiBase = process.env.REACT_APP_API_URL || '';
+        const apiUrl = apiBase ? `${apiBase}/api/config` : '/api/config';
+        
+        const response = await fetch(apiUrl);
+        
+        if (!response.ok) {
+          // If proxy fails, try direct backend URL
+          if (response.status === 404 && !apiBase) {
+            const directUrl = 'http://localhost:5000/api/config';
+            const directResponse = await fetch(directUrl);
+            if (directResponse.ok) {
+              const config = await directResponse.json();
+              setProjectConfig(config);
+              return;
+            }
+          }
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const config = await response.json();
+        setProjectConfig(config);
+        
+        // Update favicon dynamically
+        const favicon = document.querySelector("link[rel='icon']");
+        if (favicon) {
+          favicon.href = config.projectFaviconUrl;
+        }
+        
+        // Update page title
+        if (config.projectName) {
+          document.title = `${config.projectName} Chat - Intelligent AI Assistant`;
+        }
+      } catch (error) {
+        console.error('Error fetching project config:', error);
+        // Use defaults if config fetch fails
+        setProjectConfig({
+          projectName: 'ModuMentor',
+          projectLogoUrl: '/favicon.ico',
+          projectFaviconUrl: '/favicon.ico'
+        });
+      }
+    };
+    
+    fetchConfig();
+  }, []);
 
   // Check if device is mobile
   useEffect(() => {
@@ -109,7 +167,7 @@ function App() {
     newSocket.on('connect', () => {
       console.log('Connected to server');
       setIsConnected(true);
-      addMessage('🎉 Welcome to ModuMentor AI Assistant! I\'m here to help you with weather, lyrics, web searches, emails, and much more. How can I assist you today?', 'system');
+      // Welcome message will be shown in the empty state, no need to add it here
     });
 
     newSocket.on('disconnect', () => {
@@ -149,6 +207,11 @@ function App() {
     const userMessage = inputMessage.trim();
     setInputMessage('');
     setIsLoading(true);
+    
+    // Reset active tab when user sends a new message
+    if (activeTab) {
+      setActiveTab(null);
+    }
 
     // Close sidebar on mobile after sending message
     if (isMobile && sidebarOpen) {
@@ -214,6 +277,7 @@ function App() {
   }, [inputMessage]);
 
   const clearChat = async () => {
+    setActiveTab('clear');
     try {
       const response = await fetch('/api/clear', {
         method: 'POST',
@@ -227,6 +291,7 @@ function App() {
       
       if (data.success) {
         setMessages([]);
+        setActiveTab(null); // Reset active tab after clearing
         addMessage('🗑️ Chat history cleared successfully!', 'system');
       } else {
         addMessage('❌ Failed to clear chat history', 'system');
@@ -238,6 +303,12 @@ function App() {
   };
 
   const getHelp = async () => {
+    // Toggle active state if already active
+    if (activeTab === 'help') {
+      setActiveTab(null);
+      return;
+    }
+    setActiveTab('help');
     try {
       const response = await fetch('/api/help', {
         method: 'POST',
@@ -257,10 +328,17 @@ function App() {
     } catch (error) {
       console.error('Error getting help:', error);
       addMessage('❌ Failed to get help information', 'system');
+      setActiveTab(null);
     }
   };
 
   const testTools = async () => {
+    // Toggle active state if already active
+    if (activeTab === 'tools') {
+      setActiveTab(null);
+      return;
+    }
+    setActiveTab('tools');
     try {
       const response = await fetch('/api/test-tools', {
         method: 'POST',
@@ -283,10 +361,17 @@ function App() {
     } catch (error) {
       console.error('Error testing tools:', error);
       addMessage('❌ Failed to test tools', 'system');
+      setActiveTab(null);
     }
   };
 
   const analyzeConversation = async () => {
+    // Toggle active state if already active
+    if (activeTab === 'analyze') {
+      setActiveTab(null);
+      return;
+    }
+    setActiveTab('analyze');
     try {
       const response = await fetch('/api/analyze-conversation', {
         method: 'POST',
@@ -306,6 +391,7 @@ function App() {
     } catch (error) {
       console.error('Error analyzing conversation:', error);
       addMessage('❌ Failed to analyze conversation', 'system');
+      setActiveTab(null);
     }
   };
 
@@ -334,24 +420,54 @@ function App() {
         {/* Sidebar */}
         <div className={`sidebar ${sidebarOpen ? 'show' : ''}`}>
           <div className="sidebar-header">
-            <h2>🤖 ModuMentor</h2>
+            {projectConfig.projectLogoUrl && projectConfig.projectLogoUrl !== '/favicon.ico' ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                <img 
+                  src={projectConfig.projectLogoUrl} 
+                  alt={projectConfig.projectName || 'Logo'} 
+                  style={{ width: '40px', height: '40px', borderRadius: '8px' }}
+                />
+                <h2>{projectConfig.projectName || 'ModuMentor'}</h2>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px', justifyContent: 'center' }}>
+                <ModuMentorIcon size={40} className="modumentor-icon" />
+                <h2>{projectConfig.projectName || 'ModuMentor'}</h2>
+              </div>
+            )}
             <p>Intelligent AI Assistant</p>
           </div>
           
           <div className="sidebar-actions">
-            <button className="action-btn" onClick={getHelp}>
+            <button 
+              className={`action-btn ${activeTab === 'help' ? 'active' : ''}`} 
+              onClick={getHelp}
+              title="Get help and view available commands"
+            >
               <span>❓</span>
               Help & Commands
             </button>
-            <button className="action-btn" onClick={testTools}>
+            <button 
+              className={`action-btn ${activeTab === 'tools' ? 'active' : ''}`} 
+              onClick={testTools}
+              title="Test all available tools"
+            >
               <span>🔧</span>
               Test Tools
             </button>
-            <button className="action-btn" onClick={analyzeConversation}>
+            <button 
+              className={`action-btn ${activeTab === 'analyze' ? 'active' : ''}`} 
+              onClick={analyzeConversation}
+              title="Analyze conversation history"
+            >
               <span>📊</span>
               Analyze Chat
             </button>
-            <button className="action-btn" onClick={clearChat}>
+            <button 
+              className={`action-btn ${activeTab === 'clear' ? 'active' : ''}`} 
+              onClick={clearChat}
+              title="Clear chat history"
+            >
               <span>🗑️</span>
               Clear Chat
             </button>
@@ -384,7 +500,12 @@ function App() {
             >
               <span>☰</span>
             </button>
-            <h1>💬 ModuMentor Chat</h1>
+            <h1>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', verticalAlign: 'middle' }}>
+                <ModuMentorIcon size={28} className="header-icon" />
+                {projectConfig.projectName || 'ModuMentor'} Chat
+              </span>
+            </h1>
             <div className="header-actions">
               <button className="header-btn" onClick={getHelp} title="Help">
                 <span>❓</span>
@@ -404,7 +525,7 @@ function App() {
               <div className="message bot">
                 <div className="message-content">
                   <div className="message-text">
-                    <strong>🎉 Welcome to ModuMentor AI Assistant!</strong><br/><br/>
+                    <strong>🎉 Welcome to {projectConfig.projectName || 'ModuMentor'} AI Assistant!</strong><br/><br/>
                     I'm your intelligent AI companion with powerful capabilities:<br/><br/>
                     🌤️ <strong>Weather Information</strong> - Get real-time weather data<br/>
                     🎵 <strong>Lyrics Search</strong> - Find song lyrics with professional guidance<br/>

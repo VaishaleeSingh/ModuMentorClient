@@ -112,6 +112,41 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// API endpoint for project configuration
+app.get('/api/config', async (req, res) => {
+  try {
+    // Try to get config from Python bridge, fallback to environment variables
+    let projectName = process.env.PROJECT_NAME || 'ModuMentor';
+    let projectLogoUrl = process.env.PROJECT_LOGO_URL || '/favicon.ico';
+    let projectFaviconUrl = process.env.PROJECT_FAVICON_URL || '/favicon.ico';
+    
+    try {
+      const result = await callPythonBridge('get_config');
+      if (result && result.success && result.config) {
+        projectName = result.config.PROJECT_NAME || projectName;
+        projectLogoUrl = result.config.PROJECT_LOGO_URL || projectLogoUrl;
+        projectFaviconUrl = result.config.PROJECT_FAVICON_URL || projectFaviconUrl;
+      }
+    } catch (pythonError) {
+      console.log('Using environment variables for project config:', pythonError.message);
+    }
+    
+    res.json({
+      projectName: projectName,
+      projectLogoUrl: projectLogoUrl,
+      projectFaviconUrl: projectFaviconUrl
+    });
+  } catch (error) {
+    console.error('Error getting project config:', error);
+    // Always return a valid response even on error
+    res.json({
+      projectName: process.env.PROJECT_NAME || 'ModuMentor',
+      projectLogoUrl: process.env.PROJECT_LOGO_URL || '/favicon.ico',
+      projectFaviconUrl: process.env.PROJECT_FAVICON_URL || '/favicon.ico'
+    });
+  }
+});
+
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, user_id } = req.body;

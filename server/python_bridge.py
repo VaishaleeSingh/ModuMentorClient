@@ -20,8 +20,10 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
 
-# Add the parent directory to Python path to import modules
-sys.path.append(str(Path(__file__).parent.parent))
+# Add the agent directory to Python path to import modules
+agent_dir = Path(__file__).parent.parent / "agent"
+sys.path.insert(0, str(agent_dir))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
     from agents.intelligent_agent import IntelligentAgent
@@ -196,6 +198,30 @@ def analyze_conversation(user_id="web-user"):
         print(f"Error analyzing conversation: {e}", file=sys.stderr)
         return { "error": str(e), "response": f"I encountered an error while analyzing our conversation: {str(e)}" }
 
+def get_config():
+    """Get project configuration"""
+    try:
+        from config import config
+        return {
+            "success": True,
+            "config": {
+                "PROJECT_NAME": config.PROJECT_NAME,
+                "PROJECT_LOGO_URL": config.PROJECT_LOGO_URL,
+                "PROJECT_FAVICON_URL": config.PROJECT_FAVICON_URL
+            }
+        }
+    except Exception as e:
+        print(f"Error getting config: {e}", file=sys.stderr)
+        return {
+            "success": False,
+            "error": str(e),
+            "config": {
+                "PROJECT_NAME": "ModuMentor",
+                "PROJECT_LOGO_URL": "/favicon.ico",
+                "PROJECT_FAVICON_URL": "/favicon.ico"
+            }
+        }
+
 def test_tools():
     """Test all available tools"""
     global agent
@@ -277,6 +303,9 @@ def main():
         elif command == "analyze_conversation":
             user_id = args[0] if len(args) > 0 else "web-user"
             result = analyze_conversation(user_id)
+        
+        elif command == "get_config":
+            result = get_config()
         
         else:
             result = {"error": f"Unknown command: {command}"}
