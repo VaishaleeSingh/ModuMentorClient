@@ -31,8 +31,7 @@ function App() {
         
         if (!response.ok) {
           // If proxy fails, try direct backend URL (only in development)
-          const apiBaseEnv = process.env.REACT_APP_API_URL || '';
-          if (response.status === 404 && !apiBaseEnv && window.location.hostname === 'localhost') {
+          if (response.status === 404 && !apiBase && window.location.hostname === 'localhost') {
             const directUrl = 'http://localhost:5000/api/config';
             const directResponse = await fetch(directUrl);
             if (directResponse.ok) {
