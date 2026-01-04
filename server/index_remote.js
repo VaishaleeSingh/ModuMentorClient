@@ -97,8 +97,20 @@ async function callAgenticServer(endpoint, data = {}) {
       throw new Error('Agentic server request timed out.');
     } else if (error.response) {
       // Server responded with error status
-      throw new Error(`Agentic server error: ${error.response.status} - ${error.response.data?.error || 'Unknown error'}`);
+      const errorData = error.response.data || {};
+      const errorMessage = errorData.error || errorData.message || 'Unknown error';
+      console.error('Agentic server error response:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: errorData
+      });
+      throw new Error(`Agentic server error (${error.response.status}): ${errorMessage}`);
     } else {
+      console.error('Network error details:', {
+        code: error.code,
+        message: error.message,
+        config: error.config?.url
+      });
       throw new Error(`Network error: ${error.message}`);
     }
   }
