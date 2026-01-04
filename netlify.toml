@@ -2,9 +2,9 @@
   # Base directory for the build (root of the repository)
   base = "/"
   # Build command - installs dependencies and builds the React app
-  command = "cd client && npm install && npm run build"
+  command = "npm install && npm run build"
   # Publish directory - where the built files are located
-  publish = "client/build"
+  publish = "build"
 
 # SPA routing - redirect all routes to index.html for React Router
 [[redirects]]
