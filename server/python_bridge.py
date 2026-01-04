@@ -26,8 +26,8 @@ sys.path.insert(0, str(agent_dir))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
-    from agents.intelligent_agent import IntelligentAgent
-    from config import config
+    from agents.intelligent_agent import IntelligentAgent  # type: ignore
+    from config import config  # type: ignore
     import sys
     print("Successfully imported intelligent agent modules", file=sys.stderr)
 except ImportError as e:
@@ -201,7 +201,7 @@ def analyze_conversation(user_id="web-user"):
 def get_config():
     """Get project configuration"""
     try:
-        from config import config
+        from config import config  # type: ignore
         return {
             "success": True,
             "config": {
