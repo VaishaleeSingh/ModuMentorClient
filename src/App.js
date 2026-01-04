@@ -19,18 +19,28 @@ function App() {
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
 
+  // Get API base URL from environment or use relative path for development
+  const getApiUrl = (endpoint) => {
+    const apiBase = process.env.REACT_APP_API_URL || '';
+    // Remove trailing slash if present
+    const base = apiBase.replace(/\/$/, '');
+    // Remove leading slash from endpoint if present
+    const path = endpoint.replace(/^\//, '');
+    return apiBase ? `${base}/${path}` : `/${path}`;
+  };
+
   // Fetch project configuration
   useEffect(() => {
     const fetchConfig = async () => {
       try {
         // Use proxy if available, otherwise use direct backend URL
-        const apiBase = process.env.REACT_APP_API_URL || '';
-        const apiUrl = apiBase ? `${apiBase}/api/config` : '/api/config';
+        const apiUrl = getApiUrl('/api/config');
         
         const response = await fetch(apiUrl);
         
         if (!response.ok) {
           // If proxy fails, try direct backend URL (only in development)
+          const apiBase = process.env.REACT_APP_API_URL || '';
           if (response.status === 404 && !apiBase && window.location.hostname === 'localhost') {
             const directUrl = 'http://localhost:5000/api/config';
             const directResponse = await fetch(directUrl);
@@ -225,7 +235,7 @@ function App() {
 
     try {
       // Send via REST API
-      const response = await fetch('/api/chat', {
+      const response = await fetch(getApiUrl('/api/chat'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -281,7 +291,7 @@ function App() {
   const clearChat = async () => {
     setActiveTab('clear');
     try {
-      const response = await fetch('/api/clear', {
+      const response = await fetch(getApiUrl('/api/clear'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -312,7 +322,7 @@ function App() {
     }
     setActiveTab('help');
     try {
-      const response = await fetch('/api/help', {
+      const response = await fetch(getApiUrl('/api/help'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -342,7 +352,7 @@ function App() {
     }
     setActiveTab('tools');
     try {
-      const response = await fetch('/api/test-tools', {
+      const response = await fetch(getApiUrl('/api/test-tools'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -375,7 +385,7 @@ function App() {
     }
     setActiveTab('analyze');
     try {
-      const response = await fetch('/api/analyze-conversation', {
+      const response = await fetch(getApiUrl('/api/analyze-conversation'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
