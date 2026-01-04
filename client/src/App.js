@@ -7,7 +7,6 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [socket, setSocket] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -163,28 +162,26 @@ function App() {
     // Initialize socket connection
     // Use environment variable for production, fallback to localhost for development
     const socketUrl = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
-    const newSocket = io(socketUrl);
-    setSocket(newSocket);
+    const socket = io(socketUrl);
 
-    newSocket.on('connect', () => {
+    socket.on('connect', () => {
       console.log('Connected to server');
       setIsConnected(true);
       // Welcome message will be shown in the empty state, no need to add it here
     });
 
-    newSocket.on('disconnect', () => {
+    socket.on('disconnect', () => {
       console.log('Disconnected from server');
       setIsConnected(false);
       addMessage('⚠️ Connection lost. Trying to reconnect...', 'system');
     });
 
-    newSocket.on('message', (data) => {
+    socket.on('message', (data) => {
       addMessage(data.message, 'bot');
     });
 
     return () => {
-      newSocket.close();
-      setSocket(null);
+      socket.close();
     };
   }, []);
 
