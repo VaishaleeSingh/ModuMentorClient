@@ -19,13 +19,22 @@ function App() {
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
 
+  // Get API base URL from environment or use relative path for development
+  const getApiUrl = (endpoint) => {
+    const apiBase = process.env.REACT_APP_API_URL || '';
+    // Remove trailing slash if present
+    const base = apiBase.replace(/\/$/, '');
+    // Remove leading slash from endpoint if present
+    const path = endpoint.replace(/^\//, '');
+    return apiBase ? `${base}/${path}` : `/${path}`;
+  };
+
   // Fetch project configuration
   useEffect(() => {
     const fetchConfig = async () => {
       try {
         // Use proxy if available, otherwise use direct backend URL
-        const apiBase = process.env.REACT_APP_API_URL || '';
-        const apiUrl = apiBase ? `${apiBase}/api/config` : '/api/config';
+        const apiUrl = getApiUrl('/api/config');
         
         const response = await fetch(apiUrl);
         
@@ -225,7 +234,7 @@ function App() {
 
     try {
       // Send via REST API
-      const response = await fetch('/api/chat', {
+      const response = await fetch(getApiUrl('/api/chat'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -281,7 +290,7 @@ function App() {
   const clearChat = async () => {
     setActiveTab('clear');
     try {
-      const response = await fetch('/api/clear', {
+      const response = await fetch(getApiUrl('/api/clear'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -312,12 +321,11 @@ function App() {
     }
     setActiveTab('help');
     try {
-      const response = await fetch('/api/help', {
-        method: 'POST',
+      const response = await fetch(getApiUrl('/api/help?user_id=web-user'), {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_id: 'web-user' })
+        }
       });
 
       const data = await response.json();
@@ -342,23 +350,22 @@ function App() {
     }
     setActiveTab('tools');
     try {
-      const response = await fetch('/api/test-tools', {
-        method: 'POST',
+      const response = await fetch(getApiUrl('/api/tools'), {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_id: 'web-user' })
+        }
       });
 
       const data = await response.json();
       
-      if (data.test_results) {
-        const toolResults = Object.entries(data.test_results)
-          .map(([tool, result]) => `${result.status === 'success' ? '✅' : '❌'} **${tool}**: ${result.response}`)
-          .join('\n');
-        addMessage(`🔧 **Tool Test Results:**\n\n${toolResults}`, 'bot');
+      if (data.success && data.tools) {
+        const toolList = data.tools.map(tool => `• **${tool.name}**: ${tool.description || 'Available'}`).join('\n');
+        addMessage(`🔧 **Available Tools:**\n\n${toolList}`, 'bot');
       } else if (data.error) {
         addMessage(`❌ Error: ${data.error}`, 'system');
+      } else {
+        addMessage('❌ Failed to retrieve tools information', 'system');
       }
     } catch (error) {
       console.error('Error testing tools:', error);
@@ -375,7 +382,7 @@ function App() {
     }
     setActiveTab('analyze');
     try {
-      const response = await fetch('/api/analyze-conversation', {
+      const response = await fetch(getApiUrl('/api/analyze'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -385,10 +392,12 @@ function App() {
 
       const data = await response.json();
       
-      if (data.response) {
-        addMessage(data.response, 'bot');
+      if (data.success && data.analysis) {
+        addMessage(data.analysis, 'bot');
       } else if (data.error) {
         addMessage(`❌ Error: ${data.error}`, 'system');
+      } else {
+        addMessage('❌ Failed to analyze conversation', 'system');
       }
     } catch (error) {
       console.error('Error analyzing conversation:', error);
