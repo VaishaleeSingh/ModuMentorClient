@@ -31,8 +31,8 @@ function App() {
         const response = await fetch(apiUrl);
         
         if (!response.ok) {
-          // If proxy fails, try direct backend URL
-          if (response.status === 404 && !apiBase) {
+          // If proxy fails, try direct backend URL (only in development)
+          if (response.status === 404 && !apiBase && window.location.hostname === 'localhost') {
             const directUrl = 'http://localhost:5000/api/config';
             const directResponse = await fetch(directUrl);
             if (directResponse.ok) {
@@ -161,7 +161,9 @@ function App() {
 
   useEffect(() => {
     // Initialize socket connection
-    const newSocket = io('http://localhost:5000');
+    // Use environment variable for production, fallback to localhost for development
+    const socketUrl = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
+    const newSocket = io(socketUrl);
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
