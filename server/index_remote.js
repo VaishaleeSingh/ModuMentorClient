@@ -131,21 +131,53 @@ async function callAgenticServer(endpoint, data = {}) {
 
 // Health check for agentic server
 async function checkAgenticHealth() {
-  try {
-    console.log(`Checking agentic server health at: ${AGENTIC_SERVER_URL}/health`);
-    const response = await axios.get(`${AGENTIC_SERVER_URL}/health`, {
-      timeout: 10000,
-      validateStatus: function (status) {
-        return status < 500; // Accept any status code less than 500
+  // Try multiple endpoints in case of different deployment setups
+  const endpoints = ['/health', '/', '/api/health'];
+  
+  for (const endpoint of endpoints) {
+    try {
+      const url = `${AGENTIC_SERVER_URL}${endpoint}`;
+      console.log(`Checking agentic server health at: ${url}`);
+      
+      const response = await axios.get(url, {
+        timeout: 10000,
+        validateStatus: function (status) {
+          return status < 500; // Accept any status code less than 500
+        }
+      });
+      
+      if (response.status === 200 || (response.status === 404 && endpoint === '/')) {
+        console.log(`✅ Agentic server health check successful (${endpoint}): ${response.status}`, response.data);
+        return response.data;
+      } else if (response.status === 404) {
+        console.log(`⚠️  Endpoint ${endpoint} returned 404, trying next...`);
+        continue; // Try next endpoint
       }
+    } catch (error) {
+      if (error.response && error.response.status === 404) {
+        console.log(`⚠️  Endpoint ${endpoint} not found (404), trying next...`);
+        continue; // Try next endpoint
+      }
+      
+      // For other errors, log and try next
+      console.log(`⚠️  Error checking ${endpoint}:`, error.message);
+      continue;
+    }
+  }
+  
+  // If all endpoints failed, try root endpoint one more time for connection test
+  try {
+    const rootResponse = await axios.get(AGENTIC_SERVER_URL, {
+      timeout: 5000,
+      validateStatus: () => true // Accept any status for connection test
     });
-    console.log(`Agentic server health check response: ${response.status}`, response.data);
-    return response.data;
+    console.log(`⚠️  Agentic server is reachable but health endpoint not found. Root response: ${rootResponse.status}`);
+    return rootResponse.status < 400 ? { status: 'reachable', message: 'Server is reachable but health endpoint may be at different path' } : null;
   } catch (error) {
-    console.error('Agentic server health check failed:', {
+    console.error('❌ Agentic server health check failed:', {
       message: error.message,
       code: error.code,
-      url: `${AGENTIC_SERVER_URL}/health`,
+      url: AGENTIC_SERVER_URL,
       response: error.response ? {
         status: error.response.status,
         data: error.response.data
